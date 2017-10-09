@@ -2,10 +2,11 @@
  * @package   PickMeUp
  * @author    Nazar Mokrynskyi <nazar@mokrynskyi.com>
  * @author    Stefan Petre <www.eyecon.ro>
- * @copyright Copyright (c) 2013-2017, Nazar Mokrynskyi
+ * @copyright Copyright (c) 2013-2016, Nazar Mokrynskyi
  * @copyright Copyright (c) 2008-2009, Stefan Petre
  * @license   MIT License, see license.txt
  */
+
 
 (function (root, factory) {
 	if (typeof define === 'function' && define.amd) {
@@ -474,11 +475,17 @@
 					date_add_days(local_date, -(day + (day < 0 ? 7 : 0)));
 				})();
 				for (day = 0; day < 42; ++day) {
+                    from_user = options.render(new Date(local_date)) || {};
+
 					day_element                  = document.createElement('div');
 					day_element.textContent      = local_date.getDate();
 					day_element.__pickmeup_day   = local_date.getDate();
 					day_element.__pickmeup_month = local_date.getMonth();
-					day_element.__pickmeup_year  = local_date.getFullYear();
+                    day_element.__pickmeup_year  = local_date.getFullYear();
+
+                    // Custom property
+                    day_element.__pickmeup_realestateunit = from_user.realEstateUnit;
+
 					if (current_month != local_date.getMonth()) {
 						dom_add_class(day_element, 'pmu-not-in-month');
 					}
@@ -487,12 +494,15 @@
 					} else if (local_date.getDay() == 6) {
 						dom_add_class(day_element, 'pmu-saturday');
 					}
-					from_user = options.render(new Date(local_date)) || {};
+
 					val       = local_date.valueOf();
 					disabled  =
 						(options.min && options.min > local_date) ||
 						(options.max && options.max < local_date);
-					selected  =
+					if (from_user.disabled || disabled) {
+						dom_add_class(day_element, 'pmu-disabled');
+					} else if (
+						from_user.selected ||
 						options.date.valueOf() == val ||
 						(
 							options.date instanceof Array &&
@@ -502,10 +512,8 @@
 						) ||
 						(
 							options.mode == 'range' && val >= options.date[0] && val <= options.date[1]
-						);
-					if (from_user.disabled || (!('disabled' in from_user) && disabled)) {
-						dom_add_class(day_element, 'pmu-disabled');
-					} else if (from_user.selected || (!('selected' in from_user) && selected)) {
+						)
+					) {
 						dom_add_class(day_element, 'pmu-selected');
 					}
 					if (val == today) {
@@ -534,7 +542,15 @@
 		}
 		if (next) {
 			next.style.visibility = options.max && options.max <= shown_date_to ? 'hidden' : 'visible';
-		}
+        }
+
+        // Custom event
+        Array.prototype.forEach.call(document.querySelectorAll('.pmu-disabled.pmu-ordered.pmu-button'), function (node) {
+            node.addEventListener('click', function (event) {
+                dom_dispatch_event(target, 'ordered-day-click', { day: node });
+            });
+        });
+
 		dom_dispatch_event(target, 'fill');
 	}
 
